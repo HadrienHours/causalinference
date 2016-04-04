@@ -1,0 +1,132 @@
+#!/bin/bash
+
+NARGS=3
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Missing Argument:<outputpath><port number><debug level 1/0>"
+	exit 1
+fi
+
+
+if [ ! -d $1 ]
+then
+	mkdir -p $1
+fi
+
+OS=1
+
+#selecting the interface
+        echo -e "Which kind of interface is used:\n1.Ethernet\n2.Wifi\n1/2:"
+        read choice
+        if [ $choice -eq 1 ]
+        then
+                netcon="ethernet"
+                if [ $OS -eq 1 ]
+                then
+                        ifce=$(/sbin/ifconfig | egrep -i "^eth" | cut -d \  -f1)
+                        line=$(/sbin/ifconfig | egrep -n -i "^eth" | egrep -o "^[0-9]*")
+                        ipaddress=$(/sbin/ifconfig | head -$(( $line+1 )) | tail -1 | egrep -o "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | egrep -v "\.255$" | egrep -v "^255\." | head -1)
+                elif [ $OS -eq 2 ]
+                then
+                        ifce="en0"
+                        line=$(/sbin/ifconfig | egrep -n -i "^en0" | egrep -o "^[0-9]*")
+                        ipaddress=$(/sbin/ifconfig | head -$(( $line+3 )) | tail -1 | egrep -o "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | egrep -v "\.255$" | egrep -v "^255\." | head -1)
+                fi
+        elif [ $choice -eq 2 ]
+        then
+                netcon="wifi"
+                if [ $OS -eq 1 ]
+                then
+                        ifce=$(/sbin/ifconfig | egrep -i "^wlan" | cut -d \  -f1)
+                        line=$(/sbin/ifconfig | egrep -n -i "^wlan" | egrep -o "^[0-9]*")
+                        ipaddress=$(/sbin/ifconfig | head -$(( $line+1 )) | tail -1 | egrep -o "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | egrep -v "\.255$" | egrep -v "^255\." | head -1)
+                elif [ $OS -eq 2 ]
+                then
+                        ifce="en1"
+                        line=$(/sbin/ifconfig | egrep -n -i "^en1" | egrep -o "^[0-9]*")
+                        ipaddress=$(/sbin/ifconfig | head -$(( $line+3 )) | tail -1 | egrep -o "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | egrep -v "\.255$" | egrep -v "^255\." | head -1)
+                fi
+	else
+		echo "Choice not understood, program will exit"
+		exit 1
+        fi
+
+
+path_locks='/tmp/lockfiles'
+
+if [ -f $path_locks ]
+then
+	rm $path_locks/*
+fi
+
+if [ $3 -eq 1 ]
+then
+	./ftpserver_2 -d -p $2 &
+else
+	./ftpserver_2 -p $2 &
+fi
+
+echo "Server launched start running bg script"
+
+ifce="lo"
+
+while true
+do
+	listfiles=$(ls /tmp/lockfiles)
+	for file in $listfiles
+	do
+
+		#check freshly opened connections
+		pres_c=$(echo $file | egrep -c "^C_lock")
+		if [ $pres_c -gt 0 ]
+		then
+			echo "Script: One lock for opened socket found, $file"
+			port=$(echo $file | egrep -o "[0-9]+")
+			outputfile=$(echo "/tmp/lockfiles/$(echo $file | sed -e 's/^C/O/g')")
+			echo "Script: Socket created by ftp server with port $port"
+			tracefile=$(echo "$1"/"$(date +%d%m%y_%H%M%S)"_"$port".pcap)
+			touch $tracefile
+			chmod a+w,a+r,a+x $tracefile
+			echo "Script: Starting tcpdump with the following cmd"
+			echo "sudo tcpdump src port $port -i $ifce -w $tracefile &"
+			sudo tcpdump src port $port -i $ifce -w $tracefile &
+			rm /tmp/lockfiles/$file
+			echo "Script: File /tmp/lockfiles/$file deleted by script"
+			touch $outputfile
+			chmod 667 $outputfile
+			echo "Script: File $outputfile created by script" 
+		fi
+
+		#Check for ended connections
+		pres_f=$(echo $file | egrep -c "^F_lock")
+		if [ $pres_f -gt 0 ]
+		then
+			echo "Script One finished connection detected with $file"
+			port=$(echo $file | egrep -o "[0-9]+")
+                        outputfile=$(echo "/tmp/lockfiles/$(echo $file | sed -e 's/^F/W/g')")
+			#Remove the previous lock files signaling the creation of the trace
+			pastfile=$(echo "/tmp/lockfiles/$(echo $file | sed -e 's/^F/O/g')")
+			if [ -f $pastfile ]
+			then
+				rm $pastfile
+				echo "File $pastfile removed by script"
+			fi
+			pid=$(ps aux | grep tcpdump | grep "_$port.pcap" | head -1 | egrep -o "[0-9]{3}[0-9]*" | head -1)
+
+			echo "About to stop tcpdump for port $port launching the following cmd"
+			echo "sudo kill -TERM $pid"
+			echo -e "The list of tcpdump process runing for port $port is \n $(ps aux | grep tcpdump | grep "_$port.pcap")" 
+			sudo kill -TERM $pid
+			rm /tmp/lockfiles/$file
+			echo "Script remove the file /tmp/lockfiles/$file"
+			if [ ! -f $outputfile ]
+			then
+				touch $outputfile
+				chmod 667 $outputfile
+				echo "File $outputfile created by script"
+			fi
+		fi
+		sleep 10
+	done
+done
