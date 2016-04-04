@@ -1,0 +1,3 @@
+sudo mn --custom /home/mininet/mininet/custom/mytopo4.py --link tc --topo mytopo4,2,100,'10ms',0,0,100,10,'20ms',0,0,100
+
+sudo mount -t vboxsf shared_folder ~/share
