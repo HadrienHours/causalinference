@@ -1,0 +1,202 @@
+#!/bin/sh
+
+NARGS=2
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Usage:<inputfile><listname>"
+	exit 1
+fi
+
+outjpg="$1".jpg
+outdot="$1".dot
+f1=$1_formatted
+f=$1_compress
+
+if [ ! -d dotfiles.dir ]
+then
+	mkdir dotfiles.dir
+fi
+
+if [ ! -d jpgfiles.dir ]
+then
+	mkdir jpgfiles.dir
+fi
+
+if [ ! -d inputfiles.dir ]
+then
+	mkdir inputfiles.dir
+fi
+
+cat $1 | egrep -v "^[ ]*$" | egrep -v "ans" > $f1
+
+if [ -f $outjpg ]
+then
+	rm $outjpg
+fi
+
+if [ -f $outdot ]
+then
+	rm $outdot
+fi
+
+if [ -f $f ]
+then
+	rm $f
+fi
+
+#create graph file
+
+echo "digraph graph1{" > $outdot
+echo "node [fontsize = 35,penwidth=3]" >> $outdot
+echo "edge [fontsize = 35]" >> $outdot
+for l in $(cat $2)
+do
+	echo $l | cut -d , -f2 >> $outdot
+done
+
+
+echo "The initial file is"
+cat $f1 | nl
+
+## Star links ##
+#create a file of coordinate of -2
+
+if [ -f $f ]
+then
+	rm $f
+fi
+
+touch $f
+
+cat $f1 | nl | sed -re 's/^[ ]+//g' | egrep "[ ]+\-2" > tmp
+
+echo "For the -2 the tmp file is"
+cat tmp
+
+
+nl=$(wc -l tmp | cut -d \  -f1)
+
+for ((l=1;l<=nl;l++))
+do
+	numl=$(cat tmp | head -$l | tail -1 | awk '{print $1}')
+	for i in $(cat tmp | head -$l | tail -1 | cut -d \  -f2- | tr -s \  , | tr , "\n" | nl | grep "\-2" | awk '{print $1}')
+	do
+		echo "$numl,$i" >> $f
+	done
+done
+echo "The compress file is"
+cat $f
+
+#Translate those coordinate into graph
+
+nl=$(wc -l $f | cut -d \  -f1)
+
+for ((l=1;l<=$nl;l++))
+do
+	li=$(cat $f | head -$l | tail -1 | cut -d , -f1)
+	co=$(cat $f | head -$l | tail -1 | cut -d , -f2)
+	nameli=$(cat $2 | grep -re "^$li," | cut -d , -f2)
+	nameco=$(cat $2 | grep -re "^$co," | cut -d , -f2)
+	echo "$nameli -> $nameco [label=\"*\",penwidth=3,width=5]" >> $outdot
+done
+
+
+## Direct link ##
+
+#create a file of coordinate of -1
+cat $f1 |  nl | sed -re 's/^[ ]+//g' | egrep "[ ]+\-1" > tmp
+
+echo "For the -1 the tmp file is"
+cat tmp
+
+nl=$(wc -l tmp | cut -d \  -f1)
+if [ -f $f ]
+then
+	rm $f
+fi
+touch $f
+for ((l=1;l<=nl;l++))
+do
+	numl=$(cat tmp | head -$l | tail -1 | awk '{print $1}')
+	for i in $(cat tmp | head -$l | tail -1 | cut -d \  -f2- | tr -s \  , | tr , "\n" | nl | grep "\-1" | awk '{print $1}')
+	do
+		echo "$numl,$i" >> $f
+	done
+done
+
+echo "The compress file is"
+cat $f
+
+#Translate those coordinate into graph
+outdot=$1.dot
+
+nl=$(wc -l $f | cut -d \  -f1)
+
+for ((l=1;l<=$nl;l++))
+do
+	li=$(cat $f | head -$l | tail -1 | cut -d , -f1)
+	co=$(cat $f | head -$l | tail -1 | cut -d , -f2)
+	nameli=$(cat $2 | grep -re "^$li," | cut -d , -f2)
+	nameco=$(cat $2 | grep -re "^$co," | cut -d , -f2)
+	echo "$nameli -> $nameco [penwidth=3,width=5]" >> $outdot
+done
+
+
+## Latent variables ##
+
+#create a file of coordinate of 1
+cat $f1 | nl |sed -re 's/^[ ]+//g' | egrep "[ ]+1" > tmp
+
+
+echo "For the 1 the tmp file is"
+cat tmp
+
+nl=$(wc -l tmp | cut -d \  -f1)
+if [ -f $f ]
+then
+	rm $f
+fi
+touch $f
+for ((l=1;l<=nl;l++))
+do
+	numl=$(cat tmp | head -$l | tail -1 | awk '{print $1}')
+	for i in $(cat tmp | head -$l | tail -1 | cut -d \  -f2- | tr -s \  , | tr , "\n" | nl | sed -re 's/^[ ]+//g' | egrep -v "\-1" | egrep "1$" | awk '{print $1}')
+	do
+		echo "$numl,$i" >> $f
+	done
+done
+
+echo "The compress file is"
+cat $f
+
+#Translate those coordinate into graph
+outdot=$1.dot
+
+
+nl=$(wc -l $f | cut -d \  -f1)
+
+for ((l=1;l<=$nl;l++))
+do
+	li=$(cat $f | head -$l | tail -1 | cut -d , -f1)
+	co=$(cat $f | head -$l | tail -1 | cut -d , -f2)
+	nameli=$(cat $2 | grep -re "^$li," | cut -d , -f2)
+	nameco=$(cat $2 | grep -re "^$co," | cut -d , -f2)
+	echo "$nameli -> $nameco [style=dotted,penwidth=3,width=5] " >> $outdot
+done
+
+
+## Close dot file
+
+echo "}" >> $outdot
+
+## Convert into jpgfile
+
+dot -Tjpg $outdot > $outjpg
+outeps=$(echo $outjpg | sed -re 's/.jpg/.eps/1')
+dot -Teps $outdot -o $outeps
+
+mv $outjpg jpgfiles.dir
+mv $outeps jpgfiles.dir
+mv $outdot dotfiles.dir
+mv $f1 $f tmp inputfiles.dir

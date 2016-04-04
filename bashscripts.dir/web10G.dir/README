@@ -1,0 +1,34 @@
+To be laucnhed:
+sudo ./script_web10G Period listvars_psqltypes user@caratroc testdb tablename `pwd`/logfiles.dir
+    start modprobe
+    Create table on psql machine based on the list of pars
+    launch cnx_poll script
+        control the connection every "period" ms filtering HTTP/HTTPS/PSQL/MySQL
+        Each time a connection is present launch the create_cnx_log script
+            create a logfile of the variables selected
+            check if the connection is finished (state LastAck, FinWait or Closed)
+                if No: Leave the log file
+                if Yes:
+                    check if already handled
+                    If Yes : remove the log
+                    If No:     Name the last log with "fin"
+                        Launch the handle_end_cnx script
+                            concatenate all log file based on (srcip,dstip,srcport,dstport) and create a csvfile
+                            place the logfiles in treated.dir
+                            place the csvfile in totreat.dir
+                            launch the upload script
+                                copy csvfile on psql machine
+                                upload it to the dabase
+                                rm the file from the database machine
+                                mv the csvfile from totreat.dir to treated.dir
+
+
+verbose: Two levels to be defined in each script
+testp: If set to 1 then the port 80 is not filtered out (to test)
+	wget http://www.phil.cmu.edu/projects/tetrad_download/download/tetrad-5.0.0-5.jar -O /dev/null
+
+To stop the script
+    ps aux | grep script
+    sudo kill -9 %pid_of_script_web10G %pid_script_poll_cnxs
+
+NB: To check if a cnxs is already handled and avoid the fact that connection is still present in listconns and was handled the script does not take into account the cnxs which start their first entry in the logs with a closed,fin-wait,last-ack state

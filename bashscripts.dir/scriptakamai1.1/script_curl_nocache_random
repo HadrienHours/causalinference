@@ -1,0 +1,107 @@
+#!/bin/sh
+
+NARGS=4
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Usage of script:<list objects urls><list server ips><outputdir><netw ifce>"
+	exit 1
+fi
+
+listobject=$1
+listips=$2
+outputdir=$3
+ifce=$4
+
+
+outputfile="$outputdir"/curl_transfer_akamai_"$(date +%m%d%y_%H%M%S)".pcap
+
+logfile=curl_log_$(date +%m%d%y_%H%M%S).log
+
+touch $outputfile
+chmod o+rw,a+rw $outputfile
+
+ipme=$(/sbin/ifconfig $ifce | head -2 | tail -1 | egrep -o "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" | grep -v "^255\|255$" | head -1)
+
+
+cmdlist="listcurlcmds.txt"
+if [ -f $cmdlist ]
+then
+	rm $cmdlist
+fi
+
+touch $cmdlist
+
+#Generate the list of commands to retrieve the object
+for l in $(cat $listobject)
+do
+	servername=$(echo $l | cut -d \/ -f3)
+	for ip in $(cat $listips)
+       	do
+               	demand=$(echo $l | sed -re "s/$servername/$ip/g")
+		cmd=$(echo "curl -H Host:$servername \"$demand\" -o /dev/null")
+		echo $cmd >> $cmdlist
+        done
+done
+
+cp $cmdlist cmdlistbackup
+
+
+#Start tcpdump  
+sudo tcpdump -vvv ip host $ipme and not port 22 -i $ifce -w $outputfile &
+echo "tcpdump started at $(date +%H:%M:%S)"
+echo "tcpdump started at $(date +%H:%M:%S)" >> $logfile
+sleep 5
+
+#Download files from the different servers 
+nl=$(wc -l $cmdlist | cut -d \  -f1)
+echo "The number of cmd to launch is $nl"
+echo "The number of cmd to launch is $nl" >> $logfile
+
+init=$nl
+counter=0
+
+while [ $nl -gt 0 ]
+do
+	counter=$(( $counter+1 ))
+	
+	echo "Starting download of object $counter / $init" >> $logfile
+
+	index=$(( $(( $RANDOM*$RANDOM ))%$nl ))
+	if [ $index -eq 0 ]
+	then
+		index=$nl
+	fi
+	cmd=$(cat $cmdlist | nl | egrep "^[ ]*$index" | head -1 | cut -f2)
+
+	echo "command to be evaluated is:" >> $logfile
+	echo $cmd >> $logfile
+
+	eval $cmd
+	sleep 20
+	eval $cmd
+
+	echo "Before removing the cmd the number is $nl" >> $logfile
+
+	cat $cmdlist | grep -v "$cmd" > "$cmdlist"_tmp
+	mv "$cmdlist"_tmp $cmdlist
+	nl=$(wc -l $cmdlist | cut -d \  -f1)
+
+	echo "After removing the cmd the number is $nl" >> $logfile
+	echo "Download of object $counter / $init finished" >> $logfile
+	echo -e "***************************************************\n\n" >> $logfile
+
+	sleep 20
+	if [ $(( $counter%10 )) -eq 0 ]
+	then
+		echo "$counter downloads done (/$init)"
+	fi
+done
+
+
+#Stop tcpdump
+pid=$(ps aux | grep root | grep tcpdump | head -1 | awk '{print $2}')
+sudo kill -TERM $pid
+echo "tcpdump stopped"
+
+echo "Program finished at $(date +%H:%M:%S)" >> $logfile

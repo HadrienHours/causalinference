@@ -1,0 +1,62 @@
+#!/bin/sh
+NARGS=3
+
+if [ $# -ne $NARGS ]
+then
+	echo "Usage of the script $script_name is:<dotfile><list of 'number','variable name'><outputfile>"
+	echo -e "Example of an input file is:\n1,toto\n2,titi\n3,tata\n...."
+	exit 1
+fi
+
+#create the temporary file which will be modified on the way
+touch modif tmp
+chmod 666 modif tmp
+
+filen=$2_order
+
+if [ -f $filen ]
+then
+	rm $filen
+fi
+
+
+touch $filen
+
+#Invert the order of the lines of the file to, f.ex, change 10 before 1
+nl=$(wc -l  $2 | cut -d \  -f1)
+
+for (( i=1;i<=$nl;i++ ))
+do
+	cat $2 | tail -$i | head -1 >> $filen
+done
+
+cat $1 > modif
+
+#for each input in the future graph change the number of the variable by it name
+
+
+for l in $(cat $filen)
+do
+	num=$(echo $l | cut -d , -f1)
+	nam=$(echo $l | cut -d , -f2)
+	cat modif | sed -e "s/$num -> /$nam -> /g" | sed -re "s/ -> $num/ -> $nam/g" | sed -re "s/^$num/$nam/g" > tmp
+	#echo "Turn for $l, output is"
+	#cat tmp
+	#read touche
+	mv tmp modif
+done
+
+#by subsitution we may change the name graph1 by graphNameVar1
+headernb=$(cat $2 | head -1 | cut -d , -f1)
+headernm=$(cat $2 | head -1 | cut -d , -f2)
+
+error="graph$headernm"
+
+
+if [ $(cat modif | grep -c $error) -gt 0 ]
+then
+	cat modif | sed "s/graph$headernm/$headernb/g" > tmp
+	mv tmp modif
+fi
+
+mv modif $3

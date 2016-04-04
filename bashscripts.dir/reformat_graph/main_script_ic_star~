@@ -1,0 +1,126 @@
+#!/bin/sh
+
+NARGS=2
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Usage:<inputfile><listname>"
+	exit 1
+fi
+
+for l in $(cat $2)
+do
+	echo $l >> $outdot
+done
+
+echo "digraph graph1{" > $outdot
+
+f=$1_compress
+
+
+
+#create a file of coordinate of -2
+if [ -f $f ]
+then
+	rm $f
+fi
+
+touch $f
+
+cat $1 |  nl | grep "\-2" > tmp
+nl=$(wc -l tmp | cut -d \  -f1)
+for ((l=1;l<=nl;l++))
+do
+numl=$(cat tmp | head -$l | tail -1 | awk '{print $1}')
+for i in $(cat tmp | head -$l | tail -1 | cut -d \  -f2- | tr -s \  , | tr , "\n" | nl | grep "\-2" | awk '{print $1}')
+do
+echo "$numl,$i" >> $f
+done
+done
+
+#Translate those coordinate into graph
+outdot=$1.dot
+
+
+nl=$(wc -l $f | cut -d \  -f1)
+
+for ((l=1;l<=$nl;l++))
+do
+	li=$(cat $f | head -$l | tail -1 | cut -d , -f1)
+	co=$(cat $f | head -$l | tail -1 | cut -d , -f2)
+	nameli=$(cat $2 | grep -re "^$li" | cut -d , -f2)
+	nameco=$(cat $2 | grep -re "^$co" | cut -d , -f2)
+	echo "$nameli -> $nameco [label=\"*\"]" >> $outdot"
+done
+
+#create a file of coordinate of -1
+cat $1 |  nl | grep "\-1" > tmp
+nl=$(wc -l tmp | cut -d \  -f1)
+if [ -f $f ]
+then
+	rm $f
+fi
+touch $f
+for ((l=1;l<=nl;l++))
+do
+numl=$(cat tmp | head -$l | tail -1 | awk '{print $1}')
+for i in $(cat tmp | head -$l | tail -1 | cut -d \  -f2- | tr -s \  , | tr , "\n" | nl | grep "\-1" | awk '{print $1}')
+do
+echo "$numl,$i" >> $f
+done
+done
+
+#Translate those coordinate into graph
+outdot=$1.dot
+
+
+nl=$(wc -l $f | cut -d \  -f1)
+
+for ((l=1;l<=$nl;l++))
+do
+	li=$(cat $f | head -$l | tail -1 | cut -d , -f1'
+	co=$(cat $f | head -$l | tail -1 | cut -d , -f2'
+	nameli=$(cat $2 | grep -re "^$li" | cut -d , -f2)
+	nameco=$(cat $2 | grep -re "^$co" | cut -d , -f2)
+	echo "$nameli -> $nameco " >> $outdot"
+done
+
+#create a file of coordinate of 1
+cat $1 |  nl | grep "1" | grep -v "\-1" > tmp
+nl=$(wc -l tmp | cut -d \  -f1)
+if [ -f $f ]
+then
+	rm $f
+fi
+touch $f
+for ((l=1;l<=nl;l++))
+do
+numl=$(cat tmp | head -$l | tail -1 | awk '{print $1}')
+for i in $(cat tmp | head -$l | tail -1 | cut -d \  -f2- | tr -s \  , | tr , "\n" | nl | grep "1" | grep -v "\-1" | awk '{print $1}')
+do
+echo "$numl,$i" >> $f
+done
+done
+
+#Translate those coordinate into graph
+outdot=$1.dot
+
+
+nl=$(wc -l $f | cut -d \  -f1)
+
+for ((l=1;l<=$nl;l++))
+do
+	li=$(cat $f | head -$l | tail -1 | cut -d , -f1'
+	co=$(cat $f | head -$l | tail -1 | cut -d , -f2'
+	nameli=$(cat $2 | grep -re "^$li" | cut -d , -f2)
+	nameco=$(cat $2 | grep -re "^$co" | cut -d , -f2)
+	echo "$nameli -> $nameco [style=dotted]" >> $outdot"
+done
+
+
+echo "}" >> $outdot
+
+outjpg="$1".jpg
+
+dot -Tjpg $outdot > $outjpg
+

@@ -1,0 +1,67 @@
+#!/bin/sh
+NARGS=3
+
+if [ $# -ne $NARGS ]
+then
+	script_name=$(echo $0 | cut -d \/ -f2)
+	echo "Usage of the script $script_name: <input_file><output_file><list of 'number','name'>"
+	echo -e "Convert a file containing output of a DAG inference algorithm into a graph with PS\nThe input must be a space separated square matrix containg 0,1 or -1 depending on the type of edges found between the variables"
+	exit 1
+fi
+index=0
+outputfile=$2
+while [ -f $outputfile ]
+do
+	outputfile=$(echo $2"_"$index)
+	index=$(( $index+1 ))
+done
+
+
+cat  $1 | egrep 'ans | 0 | 1 | \-1' | awk 'BEGIN{FS="\n";RS="ans =";indx=0}{if($2 !~/^$/){print "?\n"$0}}' | grep -v '^$' | tr "\n" ";" | cut -d ? -f2 | tr ";" "\n" | grep -v ^$ | awk 'BEGIN{FS=" ";RS="\n"}{for(i=1;i<=NF;i+=1){if($i==-1){print NR","i",-1"}else if($i==1){print NR","i",1"}}}' > compressed_value
+
+
+nc=$(wc -l compressed_value | cut -d \  -f1)
+
+f=$outputfile".dot"
+touch $f
+nv=$(cat $1 | egrep '0 | -1 | 1' | grep -v [a-z] | head -1 | tr \  "\n" | grep -v '^$' | wc -l | cut -d \  -f1)
+nl=$(wc -l compressed_value | cut -d \  -f1)
+t=$(echo "digraph graph1{")
+echo $t > $f
+echo "node [fontsize = 35,penwidth=3]" >> $f
+echo "edge [fontsize = 35]" >> $f
+for (( y=1; y<=$nv; y+=1 ))
+do
+echo $y >> $f
+done
+for (( x=1; x<=$nl; x+=1 ))
+do
+	a=$(cat compressed_value | head -$x | tail -1 | cut -d , -f1)
+	b=$(cat compressed_value | head -$x | tail -1 | cut -d , -f2)
+	c=$(cat compressed_value | head -$x | tail -1 | cut -d , -f3)
+if [ $c == -1 ]
+then
+	t=$(echo -e "$a -> $b [penwidth=3,width=5]\n")
+elif [ $c == 1 ]
+then
+	t=$(echo -e "$a -> $b [penwidth=3,width=5,style=dotted]\n")
+
+fi
+echo "$t" >> $f
+done
+echo } >> $f
+
+fo=$(echo $f | sed -e 's/\.dot/_ordered\.dot/g')
+
+#change number in the graph by their corresponding variables names
+./named_dot_file $f $3 $fo
+mv $fo $f
+g=$(echo $outputfile.jpg | tr % _)
+h=$(echo $outputfile.eps | tr % _)
+if [ -f $g ]
+then
+	rm $g
+fi
+touch $g
+dot -Tjpg $f > $g
+dot -Teps $f -o $h

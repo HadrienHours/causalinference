@@ -1,0 +1,58 @@
+#!/bin/sh
+
+NARGS=2
+if [ $# -lt $NARGS ]
+then
+	scriptname=$(echo $0 | cut -d / -f2)
+	echo -e "Usage of the script $scriptname\n<inputfile><list of 'number','name'>"
+	exit 1
+fi
+
+outputfile=$(echo $1 | tr _ % | sed -e 's/0\./0-/g')
+
+#create inputs
+./pretreatement_graph $1 $outputfile"_input"
+
+#create graphs
+for l in *_input_*
+do	
+	s=$(wc -l $l | cut -d \  -f1)
+	if [ $s -gt 0 ]
+	then
+		ou1t=$(echo $l | cut -d _ -f1)
+		ou2t=$(echo $l | cut -d _ -f3 | egrep -o '[0-9]+')
+		out=$(echo $ou1t"_output_"$ou2t)
+		./create_graph $l $out $2
+	fi
+done
+
+#if [ ! -d psfiles.dir ]
+#then
+#	mkdir psfiles.dir
+#fi
+#mv *.ps psfiles.dir
+
+if [ ! -d dotfiles.dir ]
+then
+	mkdir dotfiles.dir
+fi
+mv *.dot dotfiles.dir
+
+#if [ ! -d outputfiles.dir ]
+#then
+#	mkdir outputfiles.dir
+#fi
+#mv *_output_* outputfiles.dir
+
+if [ ! -d inputfiles.dir ]
+then
+        mkdir inputfiles.dir
+fi
+mv *_input_* inputfiles.dir
+
+if [ ! -d jpgfiles.dir ]
+then
+	mkdir jpgfiles.dir
+fi
+mv *.jpg jpgfiles.dir
+mv *.eps jpgfiles.dir

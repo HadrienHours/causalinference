@@ -1,0 +1,10 @@
+#!/bin/sh
+NARG=2
+
+if [ ! $# -eq $NARG ]
+then
+	echo "Usage:<csvfile with header><nameoutput>"
+	exit 1
+fi
+
+head -1 $1 | tr , "\n" | nl | tr "\t" , | sed -e 's/^[ ]*//g' > $2

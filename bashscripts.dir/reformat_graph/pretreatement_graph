@@ -1,0 +1,21 @@
+#!/bin/bash
+
+NARGS=2
+if [ $# -ne $NARGS ]
+then
+	echo -e "Usage of $name_script is:\n<Input_file><output_generic_name>"
+	exit 1
+fi
+
+nfiles=$(cat $1 | awk 'BEGIN{RS="ans =";FS=" "}{print $0"\n?"}' | egrep -v '^$|[a-z]' | grep -c ?)
+
+#remove the empty line
+nfiles=$(( $nfiles-1 ))
+
+
+for (( i=1; i<=$nfiles+1; i++ ))
+do
+	f=$(echo $2"_"$i)
+	touch $f
+	cat  $1 | grep -v ind | egrep 'ans | 0 | 1 | \-1' | awk 'BEGIN{FS="\n";RS="ans =";indx=0}{if($2 !~/^$/){print "?\n"$0}}' | grep -v '^$' | tr "\n" ";" | cut -d ? -f$i  | tr ";" "\n" | grep -v '^$' > $f
+done
