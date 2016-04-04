@@ -1,0 +1,27 @@
+function [] = set_path_2()
+warning('off');
+addpath('/homes/hours/PhD/matlab/kpc/kde2d/');
+addpath('/homes/hours/PhD/matlab/kpc/');
+%addpath('/datas/xlan/hours/KCI/version10102013/KCI-test/');
+%addpath('/datas/xlan/hours/KCI/version10102013/KCI-test/algorithms/');
+%addpath('/datas/xlan/hours/KCI/version10102013/KCI-test/CI_PERM/');
+%addpath('/datas/xlan/hours/KCI/version10102013/KCI-test/exp/');
+%addpath('/datas/xlan/hours/KCI/version10102013/KCI-test/gpml-matlab/gpml/');
+addpath('/homes/hours/PhD/matlab/bnt/BNT/general/');
+addpath('/homes/hours/PhD/matlab/bnt/BNT/inference/');
+addpath('/homes/hours/PhD/matlab/bnt/BNT/learning');  
+addpath('/homes/hours/PhD/matlab/bnt/BNT/potentials');
+addpath('/homes/hours/PhD/matlab/bnt/KPMstats/CVS/');
+addpath('/homes/hours/PhD/matlab/bnt/graph/');
+addpath('/homes/hours/PhD/matlab/bnt/GraphViz/');
+addpath('/homes/hours/PhD/matlab/bnt/');
+addpath('/homes/hours/PhD/matlab/bnt/KPMstats/CVS/');
+addpath('/homes/hours/PhD/matlab/bnt/KPMstats/');
+addpath('/homes/hours/PhD/matlab/bnt/KPMtools/');
+addpath('/homes/hours/PhD/matlab/KCI/version10102013/KCI-test');
+addpath('/homes/hours/PhD/matlab/KCI/version10102013/KCI-test/algorithms/');
+addpath('/homes/hours/PhD/matlab/KCI/version10102013/KCI-test/CI_PERM/');
+addpath('/homes/hours/PhD/matlab/KCI/version10102013/KCI-test/exp/');
+addpath('/homes/hours/PhD/matlab/KCI/version10102013/KCI-test/gpml-matlab/gpml/');
+addpath('/datas/xlan/hours/pchsicparallelizesubtests.dir/matpy1.dir/');
+addpath('/datas/xlan/hours/knowgraph_data/test4var.dir/scripts.dir/');

@@ -1,0 +1,35 @@
+function [] = set_path_had()
+% path(path,'/homes/hours/PhD/matlab/spider/Optimization');
+% path(path,'/homes/hours/PhD/matlab/spider/reg');
+% path(path,'/homes/hours/PhD/matlab/spider/basic');
+% path(path,'/homes/hours/PhD/matlab/spider/functions');
+% path(path,'/homes/hours/PhD/matlab/KCI_test')
+% path(path,'/homes/hours/PhD/matlab/KCI_test/algorithms');
+% path(path,'/homes/hours/PhD/matlab/KCI_test/CI_PERM');
+% path(path,'/homes/hours/PhD/matlab/KCI_test/exp');
+% path(path,'/homes/hours/PhD/matlab/KCI_test/gpml-matlab/gpml'); 
+% path(path,'/homes/hours/PhD/matlab/KCI_test/gpml-matlab/gpml-demo');
+addpath('/homes/hours/PhD/matlab/bnt/');
+addpath('/homes/hours/PhD/matlab/bnt/BNT/');
+addpath('/homes/hours/PhD/matlab/bnt/CVS/');
+addpath('/homes/hours/PhD/matlab/bnt/graph/');
+addpath('/homes/hours/PhD/matlab/bnt/GraphViz/');
+addpath('/homes/hours/PhD/matlab/bnt/HMM/');
+addpath('/homes/hours/PhD/matlab/bnt/Kalman/');
+addpath('/homes/hours/PhD/matlab/bnt/KPMstats/');
+addpath('/homes/hours/PhD/matlab/bnt/KPMtools/');
+addpath('/homes/hours/PhD/matlab/bnt/nethelp3.3/');
+addpath('/homes/hours/PhD/matlab/bnt/netlabKPM/');
+addpath('/homes/hours/PhD/matlab/bnt/BNT/learning/');
+addpath('/homes/hours/PhD/matlab/lingam-1.4.2/');
+addpath('/homes/hours/PhD/matlab/lingam-1.4.2/code/');
+addpath('/homes/hours/PhD/matlab/lingam-1.4.2/graphviz/');
+addpath('/homes/hours/PhD/matlab/lingam-1.4.2/FastICA_23/');
+addpath('/homes/hours/PhD/matlab/lingam-1.4.2/lib');
+path(path,'/homes/hours/PhD/matlab/KCI_2');
+path(path,'/homes/hours/PhD/matlab/KCI_2/CI_PERM/');
+path(path,'/homes/hours/PhD/matlab/KCI_2/algorithms');
+path(path,'/homes/hours/PhD/matlab/KCI_2/gpml-matlab/gpml');
+path(path,'/homes/hours/PhD/matlab/ThreeVarCode');
+path(path,'/homes/hours/PhD/matlab/kernelIndependenceTests');
+path(path,'/homes/hours/PhD/matlab/kpc');
