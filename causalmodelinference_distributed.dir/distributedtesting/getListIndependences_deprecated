@@ -1,0 +1,40 @@
+#!/bin/bash
+
+NARGS=4
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Usage of $(echo $0 | cut -d / -f2-): <host><db><tablename><fileout>"
+	exit 1
+fi
+
+host=$1
+db=$2
+tbl=$3
+fileout=$4
+fout=$(echo $4 | cut -d . -f1).csv
+fcsv1=$(echo $4 | cut -d . -f1)1.csv
+fcsv2=$(echo $4 | cut -d . -f1)2.csv
+#Query all the independences
+ssh $host "psql $db -c \"SELECT * from $tbl where result > 0.5\"" > $fout
+#Convert the file in csvfile
+sh convert_psql_table_tocsv $fout $fcsv1
+#Remove the result field (last one)
+cat $fcsv1 | cut -d , -f1,2 | grep -iv "x" > $fcsv2
+#Remove doubloons
+echo "X,Y" > $fileout
+sf=$(wc -l $fcsv2 | cut -d \  -f1)
+while [ $sf -gt 0 ]
+do
+	li=$(head -1 $fcsv2)
+	x=$(echo $li | cut -d , -f1)
+	y=$(echo $li | cut -d , -f2)
+	cat $fcsv2 | grep -v "$x,$y" > tmp
+	mv tmp $fcsv2
+	cat $fcsv2 | grep -v "$y,$x" > tmp
+	mv tmp $fcsv2
+	sf=$(wc -l $fcsv2 | cut -d \  -f1)
+	echo "$x,$y" >> $fileout
+done
+#echo "The list of independence for table $tbl was created as $fileout"
+rm $fout $fcsv1 $fcsv2

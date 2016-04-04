@@ -1,0 +1,86 @@
+#!/bin/bash
+
+#./indep_node_test '+pathds+' '+pathresultsdir+' '+str(x)+' '+str(y)+' '+str(nreps)+' '+str(subs)+' '+str(alpha)+' <NODE> '
+
+usage="$( basename "$0") [-h] launch kci test X indep Y | {Z0...Zn} on remote node with args:
+<pathds>: path to csvfile containing the dataset
+<pathres>: path to directory to store results
+<x>: dimension number for X in dataset
+<y>: dimension number for Y in dataset
+<z0>: dimension number for Z0 in dataset [optional]
+....
+<zn>: dimension number for Zn in dataset [optional]
+<N>: number of repetition in kci
+<S>: subdataset size in kci
+<alpha>: significance level in tests
+<nodename>: name machine on which to run the test"
+
+NARGSm=8
+verbose=2
+if [ $# -lt $NARGSm ]
+then
+	echo "Not enough input arguments"
+	echo "see help"
+	exit 1
+fi
+
+while getopts ':h:' option
+do
+	case "$option" in
+		h) echo "$usage"
+		exit
+		;;
+		:) printf "missing argument for -%s\n" "$OPTARG" >&2
+		echo "$usage" >&2
+		exit 1
+		;;
+		\?)printf "illegal option: -%s\n" "$OPTARG" >&2
+		echo "$usage" >&2
+		exit 1
+		;;
+	esac
+done
+
+NARGSM=$(( 6+$(head -1 $1 | tr , "\n" | wc -l | cut -d \  -f1) ))
+if [ $# -gt $NARGSM ]
+then
+	echo "Too  many input arguments, see help"
+	exit 1
+fi
+
+pathds=$1
+pathres=$2
+x=$3
+y=$4
+if [ $# -eq 8 ]
+then
+	Z=0
+	N=$5
+	S=$6
+	alpha=$7
+	nodename=$8
+else
+	zs=$(( $#-4 ))
+	Z="["
+	for (( ii=5;ii<=$zs;ii++ ))
+	do
+		Z="$Z${!ii},"
+	done
+	Z="$(echo "$Z" | sed -re 's/,$//g')]"
+	dimx=$(( $#-3 ))
+	N=${!dimx}
+	dimx=$(( $#-2 ))
+	S=${!dimx}
+	dimx=$(( $#-1 ))
+	alpha=${!dimx}
+	dimx=$#
+	nodename=${!dimx}
+fi
+
+if [ $verbose -gt 1 ]
+then
+	echo "Following cmd being launched:"
+	echo "ssh $nodename \"/packages/bin/matlab_R2015a -nodesktop -nosplash -nojvm -r \"addpath('/homes/hours/PhD/matlab/kpc');ds=csvread('$pathds',1,0);indtestimpl_nloop_pstat_logging_mean_median_ctrl($x,$y,$Z,ds,$alpha,$S,$N,'$pathres');exit\""
+fi
+#ssh -n -f $nodename "nohup /packages/bin/matlab_R2015a -nodesktop -nosplash -nojvm -r \"addpath('/homes/hours/PhD/matlab/kpc');set_path_2;ds=csvread('$pathds',1,0);indtestimpl_nloop_pstat_logging_mean_median($x,$y,$Z,ds,$alpha,$S,$N,'$pathres');exit\" > /dev/null 2>&1"
+ssh $nodename "/packages/bin/matlab_R2015a -nodesktop -nosplash -nojvm -r \"addpath('/homes/hours/PhD/matlab/kpc');set_path_2;ds=csvread('$pathds',1,0);indtestimpl_nloop_pstat_logging_mean_median_ctrl($x,$y,$Z,ds,$alpha,$S,$N,'$pathres');exit\" > /dev/null 2>&1"

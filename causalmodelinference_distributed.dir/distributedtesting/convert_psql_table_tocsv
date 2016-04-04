@@ -1,0 +1,11 @@
+#!/bin/sh
+NARGS=2
+
+if [ $# -lt $NARGS ]
+then
+	echo 'Usage of the script:<input_file><output_file>'
+	exit 1
+fi
+nl=$(cat $1 | grep row | egrep -o [0-9]+)
+nl=$(( $nl+1 ))
+cat $1 | sed '2d' | head -$nl | tr \| , | sed -e 's/[ ]*,[ ]*/,/g' | sed 's/^[ ]*//g' > $2

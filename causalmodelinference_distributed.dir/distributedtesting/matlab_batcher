@@ -1,0 +1,22 @@
+#!/bin/sh
+
+NARGS=8
+
+if [ $# -lt $NARGS ]
+then
+	echo "Not enough arguments for launching matlab function"
+	exit 1
+fi
+
+matlab_exec=matlab
+if [ $# -eq $NARGS ]
+then
+	X="${1}('${2}',$3,$4,$5,$6,$7,$8)"
+else
+	X="${1}('${2}',$3,$4,$5,$6,$7,$8,'$9')"
+fi
+echo ${X} > matlab_command.m
+cat matlab_command.m
+read input
+${matlab_exec} -nojvm -nodisplay -nosplash < matlab_command.m
+rm matlab_command.m

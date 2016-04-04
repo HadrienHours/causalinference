@@ -1,0 +1,100 @@
+#!/bin/sh
+
+NARGS=11
+
+if [ ! $NARGS -eq $# ]
+then
+	echo "Usage $(echo $0 | cut -d / -f2):<dbhost><dbname><tablename><pathmatlab><pathds><npars><subdssize><nloops><alpha><maxcondsize><listnodes>"
+	exit 1
+fi
+
+dbhost=$1
+dbname=$2
+tbl=$3
+pathm=$4
+pathds=$5
+npars=$6
+N=$7
+l=$8
+alpha=$9
+maxcond=${10}
+listnodest=${11}
+listnodes=listnodes_checked.csv
+#open a master ssh cnxs to dbhost
+echo "Creating ssh-agent"
+eval `ssh-agent`
+ssh-add
+SSH_PROC_ID=$!
+
+#create table
+pres=$(ssh $dbhost "psql $dbname -c \"select * from pg_tables where tablename = '$tbl' and schemaname = 'public'\"" | grep row | grep -c "(1 row)")
+
+if [ -f $listnodes ]
+then
+	rm $listnodes
+fi
+
+touch $listnodes
+
+#cp $listnodest $listnodes
+
+if [ $pres -gt 0 ]
+then
+	echo "Table already present, Drop it ? [Y/N]:"
+	read choice
+	if [ $choice == "Y" ]
+	then
+		ssh $dbhost "psql $dbname -c \"DROP TABLE $tbl\""
+	else
+		exit 1
+	fi
+fi
+
+
+for g in $(cat $listnodest)
+do
+	echo "Testing reachability of node $g"
+	pres=$(ping -c 2 $g | egrep -o "[0-9]+% packet loss" | egrep -o "[0-9]+%" | egrep -o "[0-9]+")
+	if [ $pres -lt 25 ]
+	then
+		echo $g >> $listnodes
+	else
+		echo "$g not reachable out of the list"
+	fi
+done
+nnodes=$(wc -l $listnodes | cut -d \  -f1)
+
+sh createTableIndependences $dbhost $dbname $tbl $maxcond
+pres=$(ssh $dbhost "psql $dbname -c \"select * from pg_tables where tablename = '$tbl' and schemaname = 'public'\"" | grep row | grep -c "(1 row)")
+
+if [ ! $pres -gt 0 ]
+then
+	echo "Failure while creating the table on $dbhost $dbname"
+	exit 1
+fi
+
+#populate table
+for (( i=0;i<=$maxcond;i++ ))
+do
+	
+	#Generate list of independences already tested (remove doubloons also due to cond indpce tested on different cond set
+	if [ $i -eq 0 ]
+	then
+		listindeptested=''
+	else
+		listindeptested=$(echo "$(pwd)/listindep_cond_${i}_$tbl_tested")
+		sh getListIndependences $dbhost $dbname $tbl $listindeptested
+	fi
+	listindep=$(echo "$(pwd)/listindep_cond_${i}_$tbl")
+	
+	#Generate list of independences to test
+	matlab -nodesktop -nosplash -nojvm -r "generateindependencelist($npars,$i,'$listindeptested','$listindep');exit"
+
+	#Test independences
+	echo "Start to distribute jobs for conditional sets of size $i"	
+	echo "Launching python distributeJobs.py $listindep $nnodes $listnodes $pathm $pathds $N $l $alpha $dbhost $dbname $tbl"
+	python distributeJobs.py $listindep $nnodes $listnodes $pathm $pathds $N $l $alpha $dbhost $dbname $tbl
+	echo "Finished testing indepedences for conditional sets of size $i"
+done
+
+kill $SSH_PROC_ID

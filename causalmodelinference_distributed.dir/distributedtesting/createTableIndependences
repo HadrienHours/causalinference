@@ -1,0 +1,65 @@
+#!/bin/sh
+
+NARGS=4
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Usage <host><db><tablename><maxcondsize>"
+	exit 1
+fi
+
+host=$1;
+db=$2
+tbl=$3
+N=$4
+
+ssh $host "psql $db -c \"CREATE TABLE $tbl (x integer, y integer)\""
+
+for (( i=1;i<=$N;i++ ))
+do
+	z="z$i"
+	ssh $host "psql $db -c \"ALTER TABLE $tbl ADD COLUMN $z integer\"" > tmp
+	p=$(cat tmp | grep -c "Connection refused")
+	if [ $p -gt 0 ]
+	then
+	        echo "Could not add colum $z, ssh refused"
+        	exit 1
+	fi
+
+done
+
+ssh $host "psql $db -c \"ALTER TABLE $tbl ADD COLUMN sizeds integer\"" > tmp
+p=$(cat tmp | grep -c "Connection refused")
+if [ $p -gt 0 ]
+then
+	echo "Could not add colum sizeds, ssh refused"
+	exit 1
+fi
+
+ssh $host "psql $db -c \"ALTER TABLE $tbl ADD COLUMN loops integer\"" > tmp
+p=$(cat tmp | grep -c "Connection refused")
+if [ $p -gt 0 ]
+then
+        echo "Could not add colum sizeds, ssh refused"
+        exit 1
+fi
+
+ssh $host "psql $db -c \"ALTER TABLE $tbl ADD COLUMN alpha numeric\"" > tmp
+p=$(cat tmp | grep -c "Connection refused")
+if [ $p -gt 0 ]
+then
+        echo "Could not add colum alpha, ssh refused"
+        exit 1
+fi
+
+ssh $host "psql $db -c \"ALTER TABLE $tbl ADD COLUMN result numeric\"" > tmp
+p=$(cat tmp | grep -c "Connection refused")
+if [ $p -gt 0 ]
+then
+        echo "Could not add colum result, ssh refused"
+        exit 1
+fi
+
+echo "Table $tbl created on $host:$db"
+
+rm tmp

@@ -1,0 +1,89 @@
+#!/bin/sh
+
+
+NARGS=12
+
+if [ $# -lt $NARGS ]
+then
+	echo "Not enough argument to launch the node task ($# given instead of $NARGS, the last one being ${!#})"
+	echo "Usage:<hostdb><db><tbl><node><pathm><pathds><alpha><N><l><x><y><z1>..<zn>"
+	exit 1
+fi
+host=$1
+db=$2
+tbl=$3
+node=$4
+pathm=$5
+pathds=$6
+alpha=$7
+N=$8
+l=$9
+x=${10}
+y=${11}
+
+verbose=0
+
+#echo "$# arguments, the last one being ${!#}"
+
+if [ $# -gt 12 ]
+then
+	z="["
+	for (( i=12;i<=$#;i++ ))
+	do
+		if [ $i == 12 ]
+		then
+			z="$z${!i}"
+		else
+			z="$z,${!i}"
+		fi
+	done
+	z="$z]"
+else
+	z=${12}
+fi
+
+pathout="$node"_independence_"$x"_"$y"_$z
+pathout=$(echo "$(pwd)/$pathout")
+
+#echo "ssh $node \"/packages/matlab_r2012a/bin/matlab -nodesktop -nojvm -nosplash -r \\\"addpath('$pathm');nodecondtest('$pathds',$x,$y,$z,$alpha,$N,$l,'$pathout');exit\\\"\""
+#read input
+if [ $verbose -gt 0 ]
+then
+	echo "Starting matlab function on node $node testing independence between $x and $y cond on $z for $N subdataset and $l loops"
+fi
+
+ssh $node "/packages/matlab_r2012a/bin/matlab -nodesktop -nojvm -nosplash -r \"addpath('$pathm');nodecondtest('$pathds',$x,$y,$z,$alpha,$N,$l,'$pathout');exit\""
+
+request1="INSERT INTO $tbl (x,y"
+request2=" VALUES ($x,$y"
+if [ $# -eq 12 ]
+then
+	if [ ${!#} != 0 ]
+	then
+		request1="$request1",z1
+		request2="$request2","$z"
+	fi
+else
+	for (( i=12;i<=$#;i++ ))
+	do
+		request1="$request1",z"$(( $i-11 ))"
+		zi=$(echo $z | tr -d [ | tr -d ] | cut -d , -f$(( $i-11 )))
+		request2="$request2","$zi"
+	done
+fi
+r=$(cat $pathout | tr , "\n" | nl | wc -l | cut -d \  -f1)
+p=$(cat $pathout | cut -d , -f$r)
+request1=$(echo "$request1,sizeds,loops,alpha,result)")
+request2=$(echo "$request2,$N,$l,$alpha,$p)")
+echo $request1
+echo $request2
+
+request=$(echo "$request1$request2")
+
+#echo "Request is $request"
+
+ssh $host "psql $db -c \"$request\""
+
+rm $pathout
+
+#./nodebashtest eurecom6 /homes/hours/PhD/matlab/kpc/distributedtesting /datas/xlan/hours/blagny/dataset3_from_05182013.dir/aggregates.dir/TCPRENO_CNXS.dir/set2_modeltesting1.dir/blagnydataset_tstatstat_serverinfos_09112013_11282013_bt5MB_diffrtttstatintrabase_lt_5%_withnbpkts_cleaned_no0capacity.csv 0.05 400 4 1 2 3 4 /datas/xlan/hours/blagny/dataset3_from_05182013.dir/aggregates.dir/TCPRENO_CNXS.dir/set2_modeltesting1.dir/testnode1_1_2_3.csv
