@@ -1,0 +1,14 @@
+#!/bin/bash
+NARGS=3
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Use of $(echo $0 | cut -d / -f2):<input1><input2><output>"
+fi
+
+#perl -lane '
+#    END{print "$_$h{$_}" for sort keys %h}
+#    $h{$F[0]} .= " " .  join " ", @F[1..$#F];
+#' $1 $2 | sed -re 's/[ ]+/ /g' > $3
+
+awk 'FNR==NR{a[$1]=$2 FS $3;next}{ print $0, a[$1]}' $1 $2 > $3

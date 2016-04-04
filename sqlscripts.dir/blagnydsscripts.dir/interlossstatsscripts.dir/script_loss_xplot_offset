@@ -1,0 +1,98 @@
+#!/bin/sh
+
+NARGS=5
+
+if [ ! $# -eq $NARGS ]
+then
+	echo "Usage script:<xplotfile><date><outputfile><tablename><cid>"
+	exit 1
+fi
+
+if [[ $2 =~ ^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$ ]]
+then
+        echo "Accepted date $2"
+else
+        echo "Wrong date format YYYY-MM-DD"
+        exit 1
+fi
+
+if [ -f listlinesloss ]
+then
+	rm listlinesloss
+fi
+
+if [ -f listlinetsloss ]
+then
+	rm listlinetsloss
+fi
+
+
+if [ -f $3 ]
+then
+	echo "$3 file already exists, overwrite ? Y/N"
+	read input
+	if [ "$input"=="Y" ]
+	then
+		rm $3
+	else
+		exit 1
+	fi
+fi
+
+out=outputlossfunction
+
+echo "Tablename,Cid,Time,Interpacket" > $out
+
+cat $1 | grep -n "red" | egrep -o "[0-9]+" > listlinesloss
+
+for l in $(cat listlinesloss)
+do
+	echo $(( $l+1 )) >> listlinetsloss
+done
+
+l1=$(cat $1 | grep -n "red" | head -1 | egrep -o "[0-9]+")
+l1=$(( $l1+1 ))
+d1=$(cat $1 | head -$l1 | tail -1 | awk '{print $2}')
+s1=$(date +%Y-%m-%d -d @"$d1")
+#by adding +%x we are sure the offset is an integer
+e0=$(date +%s -d "$2")
+e1=$(date +%s -d "$s1")
+
+offset=$(( $e0-$e1 ))
+offset=$(( $offset-3600 ))
+
+
+#if [ "$s1" != "$s2" ]
+#then
+#	flagday=1
+#fi
+
+nl=$(wc -l listlinetsloss | cut -d \  -f1)
+
+echo "Number of line to treat for cnxid $5 table $4 is $nl"
+
+for l in $(cat listlinetsloss) 
+do
+	#head -1 in case 10 then 10,100,1000, etc will match so take the smallest match
+	i=$(( $l-3 ))
+	j=$(cat $1 | nl | sed -re 's/^[ ]*//g' | egrep "^$l" | head -1 | awk '{print $3}')
+	l=$(cat $1 | nl | sed -re 's/^[ ]*//g' | egrep "^$i" | head -1 | awk '{print $3}')
+        r=$(echo $j $l | awk '{print $1-$2}')
+	#if [ $flagday -gt 0 ]
+	#then
+		j0=$j
+		#separate the decimal part  
+		j1=$(echo $j0 | cut -d . -f1)
+		j2=$(echo $j0 | cut -d . -f2)
+		j3=$(( $j1+$offset ))
+		j=$(echo "$j3"."$j2")
+		k=$(date +"%Y-%m-%d %H:%M:%S.%N" -d @$j)
+		echo "$k,$r">>$out
+	#else
+	#	k=$(date +"%H:%M:%S.%N" -d @$j)	
+	#	echo "$2 $k,$r">>$out
+	#fi
+done
+
+cat $out | sed -e '2,$s/^/'$4','$5',/g' > $3
+rm listlinesloss listlinetsloss $out

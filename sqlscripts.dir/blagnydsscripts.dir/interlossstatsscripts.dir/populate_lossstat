@@ -1,0 +1,53 @@
+#!/bin/sh
+NARGS=2
+
+if [ $# -lt $NARGS ]
+then
+	echo "Usage of $(echo $0 | cut -d / -f2):<db><table><banlist(optional)>"
+	exit 1
+fi
+
+psql -c "select cnxid from blagnydatasettable where tablename='$2' and retr_score > 0 order by cnxid" -d $1 | grep -v "row" > listcid
+cat listcid | egrep -o "[0-9]+" > listcidt
+mv listcidt listcid
+
+cwd=`pwd`
+
+for l in $(cat listcid)
+do
+	if [ $# -eq 3 ]
+	then
+		ban=$(cat $3 | egrep -c "^$l$")
+		if [ $ban -gt 0 ]
+		then
+			echo "Connection $l in banlist so not treated"
+			continue
+		fi
+	fi
+	presence=$(psql -c "select count(*) from lossstats where tablename = '$2' and cnxid = $l" -d $1 | egrep "[0-9]+" | grep -v row | awk '{print $1}')
+	#lossp=$(psql -c "select max(score) from retr_test where btid in (select btid from bulk_transfer where tid in (select pkt_tid from traces where packets = '$2') and cnxid = $l)" -d $1 | egrep -v "[a-z]+" | egrep -v "row" | egrep -v "\-" | egrep -v "^$")
+	#lossp=$(echo $lossp | sed -re 's/\.0+//g')
+	if [ $presence -gt 0 ]
+	then
+		echo "The connection $l from table $2 already present"
+	#elif [ $lossp -eq 0 ]
+	#then
+	#	echo "There is no loss for connection $l from table $2"
+	else
+		presence=$(psql -c "select reverse from blagnydatasettable where tablename='$2' and cnxid = $l" -d $1 |  egrep "[0-9]+" | grep -v row | awk '{print $1}')
+		if [ -z $presence ]
+		then
+			dir=0
+		else
+			dir=1
+		fi
+		xplot=xplot_"$2"_"$l"_dir_"$dir"
+		out="$2"_loss_stats_cid_"$l"_dir_"$dir".csv
+		datem=$(psql -c "select min(ts) from $2 where cnxid = $l" -d $1 | egrep [0-9]+ | grep -v row | awk '{print $1}')
+		psql -c "select ts_diagram_xpl($l,$dir,'$2')" -d $1 | sed 1,2d > "$xplot"
+		./script_loss_xplot_offset_perf_1  $xplot $datem $out $2 $l
+		psql -c "COPY lossstats from '$cwd/$out' DELIMITER ',' CSV HEADER" -d $1
+		echo "Connection $l from table $2 treated"
+	fi
+	rm -f $xplot $out 
+done
